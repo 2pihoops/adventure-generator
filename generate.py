@@ -6,12 +6,14 @@ class Choice:
     _children = []
     _element = -1
     _action = ""
+    _terminus = False
 
-    def __init__(self, parent, children, element, action):
+    def __init__(self, parent, children, element, action, terminus):
         self._parent = parent
         self._children = children
         self._element = element
         self._action = action
+        self._terminus = terminus
 
     def get_element(self):
         return self._element
@@ -30,7 +32,7 @@ class Choice:
 
     def get_choices(self):
         choices = self._children
-        #if self._parent:
+        # if self._parent:
         #    choices.append(self._parent)
         return choices
 
@@ -45,21 +47,33 @@ class Choice:
             i += 1
         return i
 
+    def get_terminal(self):
+        return self._terminus
+
+    def get_dead_end(self):
+        return len(self._children) == 0
+
     def __str__(self):
-        val = self._action + " @ " + str(self.get_parent_element()) + " of " + str(len(self.get_parent_choices())) + "\n"
-        "blah"
+        val = self._action + " @ " + str(self.get_parent_element()) + " of " + str(
+            len(self.get_parent_choices())) + "\n"
         for child in self._children:
-            val += "-" * self.get_depth() + "> " + str(child)
+            val += "-" * self.get_depth() + "> "
+            if child.get_dead_end():
+                val += "(D) "
+            if child.get_terminal():
+                val += "(T) "
+            val += str(child)
         return val
 
 
 MAX_CHOICES = 4
 MIN_CHOICES = 2
 TREE_SIZE = 20
+MAX_DEPTH = 5
 
 
 def validate_choice(choice: Choice):
-    if choice.get_choices() is not None and len(choice.get_choices()) >= MAX_CHOICES:
+    if (choice.get_choices() is not None and len(choice.get_choices()) >= MAX_CHOICES) or choice.get_terminal():
         return False
     else:
         return True
@@ -69,7 +83,7 @@ def choose_wisely(choices: []):
     choice_count = len(choices)
     random_choice_number = random.choice(range(choice_count))
     for i in range(choice_count):
-        if validate_choice(choices[random_choice_number]):
+        if validate_choice(choices[random_choice_number - 1]):
             return random_choice_number
         elif random_choice_number + i > choice_count:
             random_choice_number = choice_count % (random_choice_number + i)
@@ -80,17 +94,40 @@ def choose_wisely(choices: []):
 
 
 def generate(size):
-    entrypoint = Choice(None, [], 0, "0")
+    entrypoint = Choice(None, [], 0, "0", False)
     choices = [entrypoint]
-    for i in range(1, size):
+    margin = 0
+    i = 1
+    while i <= size + margin:
         next_parent_index = choose_wisely(choices)
         if next_parent_index is None:
             break
         parent_choice = choices[next_parent_index]
-        new_choice = Choice(parent_choice, [], i, "Do " + str(i))
+        terminus = False
+        if parent_choice.get_depth() >= MAX_DEPTH - 1:
+            terminus = True
+        new_choice = Choice(parent_choice, [], i, "Do " + str(i), terminus)
         parent_choice.add_choice(new_choice)
         choices.append(new_choice)
+
+        if i == size + margin:
+            if not validate_tree(entrypoint, choices):
+                margin += 1
+        i += 1
+
     return entrypoint
+
+
+def validate_tree(entrypoint: Choice, choices: list) -> bool:
+    # Must be at least one terminator
+    terminates = False
+    for choice in choices:
+        if terminates:
+            break
+        else:
+            if choice.get_terminal():
+                terminates = True
+    return terminates
 
 
 choice_tree = generate(TREE_SIZE)
