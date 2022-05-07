@@ -1,5 +1,6 @@
 import random
-
+import renblah
+from pathlib import Path
 
 class Choice:
     _parent = None
@@ -102,7 +103,7 @@ def generate(size):
         next_parent_index = choose_wisely(choices)
         if next_parent_index is None:
             break
-        parent_choice = choices[next_parent_index]
+        parent_choice = choices[next_parent_index - 1]
         terminus = False
         if parent_choice.get_depth() >= MAX_DEPTH - 1:
             terminus = True
@@ -115,7 +116,7 @@ def generate(size):
                 margin += 1
         i += 1
 
-    return entrypoint
+    return (entrypoint, choices)
 
 
 def validate_tree(entrypoint: Choice, choices: list) -> bool:
@@ -129,6 +130,24 @@ def validate_tree(entrypoint: Choice, choices: list) -> bool:
                 terminates = True
     return terminates
 
+def make_renpy(entrypoint: Choice, choices: list):
+    story = ""
+    story += renblah.define_character("s", "Robot")
+    story += renblah.initialize()
+    story += renblah.make_choice(entrypoint)
+    while "[[" in story:
+        for choice in choices:
+            story = renblah.interpolate_choice(choice, story)
+    Path("script.rpy").write_text(story)
 
-choice_tree = generate(TREE_SIZE)
+
+(choice_tree, choices) = generate(TREE_SIZE)
 print(choice_tree)
+make_renpy(choice_tree, choices)
+
+#choice = Choice(None, [], 0, "choice", True)
+#test_story = "[[choice]]"
+#print(test_story)
+#print(choice)
+#print(choice._action)
+#print(renblah.interpolate_choice(choice, test_story))
